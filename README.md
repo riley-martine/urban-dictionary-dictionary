@@ -28,7 +28,7 @@ a barney
 
 
 ## Data
-This repo include a snapshot of all entry names from Urban dictionary taken in march 2016. The lists are found in 'data/' and are bucketed by starting letter (at this time, I was unable to collect entries starting with numbers).
+This repo include a snapshot of all entry names from Urban dictionary taken in march 2016. The lists are found in [`data/`](https://github.com/mattbierner/urban-dictionary-word-list/tree/master/data) and are bucketed by starting letter (at this time, I was unable to collect entries starting with numbers).
 
 Each entry name is on it's own line in the file.
 
