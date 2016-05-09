@@ -4,11 +4,15 @@ import urllib2
 import time
 import os
 import argparse
+import re
 
 API = "http://www.urbandictionary.com/browse.php?word={0}"
 
 MAX_ATTEMPTS = 10
 DELAY = 10
+
+NUMBER_SIGN = "#"
+
 
 # http://stackoverflow.com/a/554580/306149
 class NoRedirection(urllib2.HTTPErrorProcessor):
@@ -17,25 +21,36 @@ class NoRedirection(urllib2.HTTPErrorProcessor):
     
     https_response = http_response
 
-def extract_page_entries(html):
+def extract_page_entries(letter, html):
     soup = BeautifulSoup(html, "html.parser")
     list = soup.find(id="columnist").find('ul')
     for li in list.find_all('li'):
-        yield li.find('a').string
+        a = li.find('a').string
+        if a:
+            if letter == NUMBER_SIGN and not re.match('[a-z]', a, re.I):
+                yield a
+            elif letter != NUMBER_SIGN and not re.match(chr(ord(letter) + 1), a, re.I):
+                yield a
 
-def get_next(html):
+def get_next(letter, html):
     soup = BeautifulSoup(html, "html.parser")
     next = soup.find('a', {"rel":"next"})
     if next:
-        return 'http://www.urbandictionary.com' + next['href']
+        href = next['href']
+        if letter == NUMBER_SIGN:
+            if re.search('word=[a-z]', href, re.I):
+                return None
+        elif re.search('word={0}'.format(chr(ord(letter) + 1)), href, re.I):
+            return None    
+        return 'http://www.urbandictionary.com' + href
     return None
     
 def extract_letter_entries(letter):
-    if letter == '#':
-        letter = ''
+    if letter == NUMBER_SIGN:
+        start = ''
     else:
-        letter = letter + letter
-    url = API.format(letter)
+        start = letter + 'a'
+    url = API.format(start)
     attempt = 0
     while url:
         print(url)
@@ -43,8 +58,8 @@ def extract_letter_entries(letter):
         code = response.getcode()
         if code == 200:
             content = response.read()
-            yield extract_page_entries(content)
-            url = get_next(content)
+            yield list(extract_page_entries(letter, content))
+            url = get_next(letter, content)
             attempt = 0
         else:
             print('retry')
