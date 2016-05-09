@@ -5,7 +5,7 @@ import time
 import os
 import argparse
 
-API = "http://www.urbandictionary.com/browse.php?character={0}&page={1}"
+API = "http://www.urbandictionary.com/browse.php?word={0}"
 
 MAX_ATTEMPTS = 10
 DELAY = 10
@@ -23,22 +23,31 @@ def extract_page_entries(html):
     for li in list.find_all('li'):
         yield li.find('a').string
 
+def get_next(html):
+    soup = BeautifulSoup(html, "html.parser")
+    next = soup.find('a', {"rel":"next"})
+    if next:
+        return 'http://www.urbandictionary.com' + next['href']
+    return None
+    
 def extract_letter_entries(letter):
-    page = 1
+    if letter == '#':
+        letter = ''
+    else:
+        letter = letter + letter
+    url = API.format(letter)
     attempt = 0
-    while True:
-        print(page)
-        url = API.format(letter, page)
+    while url:
+        print(url)
         response = urllib2.urlopen(url)
         code = response.getcode()
         if code == 200:
-            yield extract_page_entries(response.read())
-            page += 1
+            content = response.read()
+            yield extract_page_entries(content)
+            url = get_next(content)
             attempt = 0
-        if code == 301 or code == 302:
-            # end of pages
-            break
         else:
+            print('retry')
             attempt += 1
             if attempt > MAX_ATTEMPTS:
                 break
@@ -55,7 +64,7 @@ def download_letter_entries(letter, file):
     for entry_set in extract_letter_entries(letter):
         with open(file, 'a') as f:
             data = ('\n'.join(entry_set)).encode('utf8')
-            f.write(data)
+            f.write(data + '\n')
 
 def download_entries(letters, file):
     for letter in letters:
