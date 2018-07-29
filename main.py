@@ -40,7 +40,7 @@ def get_next(letter, html):
         if letter == NUMBER_SIGN:
             if re.search('word=[a-z]', href, re.I):
                 return None
-        elif re.search('word={0}'.format(chr(ord(letter) + 1)), href, re.I):
+        elif re.search(f"word={chr(ord(letter) + 1)}", href, re.I):
             return None    
         return 'http://www.urbandictionary.com' + href
     return None
@@ -83,7 +83,7 @@ def download_letter_entries(letter, file):
 
 def download_entries(letters, file):
     for letter in letters:
-        print('======={0}======='.format(letter))
+        print(f"======={letter}=======")
         download_letter_entries(letter, file)
 
 parser = argparse.ArgumentParser(description='Process some integers.')
