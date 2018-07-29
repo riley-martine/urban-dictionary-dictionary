@@ -6,7 +6,7 @@ import os
 import argparse
 import re
 
-API = "http://www.urbandictionary.com/browse.php?word={0}"
+API = "https://www.urbandictionary.com/browse.php?word={0}"
 
 MAX_ATTEMPTS = 10
 DELAY = 10
@@ -62,7 +62,7 @@ def extract_letter_entries(letter):
             url = get_next(letter, content)
             attempt = 0
         else:
-            print('retry')
+            print(f"Trying again, expected response code: 200, got {code}")
             attempt += 1
             if attempt > MAX_ATTEMPTS:
                 break
@@ -88,12 +88,17 @@ def download_entries(letters, file):
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 
-parser.add_argument('letters', metavar='N', nargs='+',
-                   help='letters to download entries for')
+parser.add_argument('--ifile', dest='ifile',
+                   help='input file name. Contains a list of letters separated by a newline', default="input.list")
 
 parser.add_argument('--out', dest='out',
-                   help='output file name. May be a format string')
+                   help='output file name. May be a format string', default="data/{0}.data")
 
 args = parser.parse_args()
 
-download_entries(args.letters, args.out)
+letters = []
+with open(args.ifile, 'r') as ifile:
+    for row in ifile:
+        letters.append(row.strip())
+
+download_entries(letters, args.out)
