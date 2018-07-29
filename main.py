@@ -14,7 +14,7 @@ DELAY = 10
 NUMBER_SIGN = "#"
 
 
-# http://stackoverflow.com/a/554580/306149
+# https://stackoverflow.com/a/554580/306149
 class NoRedirection(urllib.request.HTTPErrorProcessor):
     def http_response(self, request, response):
         return response
@@ -42,7 +42,7 @@ def get_next(letter, html):
                 return None
         elif re.search(f"word={chr(ord(letter) + 1)}", href, re.I):
             return None    
-        return 'http://www.urbandictionary.com' + href
+        return 'https://www.urbandictionary.com' + href
     return None
     
 def extract_letter_entries(letter):
@@ -77,8 +77,8 @@ letters = list(string.ascii_uppercase) + ['#']
 def download_letter_entries(letter, file):
     file = file.format(letter)
     for entry_set in extract_letter_entries(letter):
-        with open(file, 'a') as f:
-            data = ('\n'.join(entry_set)).encode('utf8')
+        with open(file, 'a', encoding='utf-8') as f:
+            data = ('\n'.join(entry_set))
             f.write(data + '\n')
 
 def download_entries(letters, file):
