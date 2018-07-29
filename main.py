@@ -1,6 +1,6 @@
 import string
 from bs4 import BeautifulSoup
-import urllib2
+import urllib.request
 import time
 import os
 import argparse
@@ -15,7 +15,7 @@ NUMBER_SIGN = "#"
 
 
 # http://stackoverflow.com/a/554580/306149
-class NoRedirection(urllib2.HTTPErrorProcessor):
+class NoRedirection(urllib.request.HTTPErrorProcessor):
     def http_response(self, request, response):
         return response
     
@@ -54,7 +54,7 @@ def extract_letter_entries(letter):
     attempt = 0
     while url:
         print(url)
-        response = urllib2.urlopen(url)
+        response = urllib.request.urlopen(url)
         code = response.getcode()
         if code == 200:
             content = response.read()
@@ -68,8 +68,8 @@ def extract_letter_entries(letter):
                 break
             time.sleep(DELAY * attempt)
 
-opener = urllib2.build_opener(NoRedirection, urllib2.HTTPCookieProcessor())
-urllib2.install_opener(opener)
+opener = urllib.request.build_opener(NoRedirection, urllib.request.HTTPCookieProcessor())
+urllib.request.install_opener(opener)
 
 
 letters = list(string.ascii_uppercase) + ['#']
