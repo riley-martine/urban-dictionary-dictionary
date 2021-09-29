@@ -6,12 +6,12 @@ import os
 import argparse
 import re
 
-API = "https://www.urbandictionary.com/browse.php?word={0}"
+API = "https://www.urbandictionary.com/browse.php?character={0}"
 
 MAX_ATTEMPTS = 10
 DELAY = 10
 
-NUMBER_SIGN = "#"
+NUMBER_SIGN = "*"
 
 
 # https://stackoverflow.com/a/554580/306149
@@ -46,11 +46,7 @@ def get_next(letter, html):
     return None
     
 def extract_letter_entries(letter):
-    if letter == NUMBER_SIGN:
-        start = ''
-    else:
-        start = letter + 'a'
-    url = API.format(start)
+    url = API.format(letter)
     attempt = 0
     while url:
         print(url)
