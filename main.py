@@ -6,12 +6,12 @@ import os
 import argparse
 import re
 
-API = "https://www.urbandictionary.com/browse.php?word={0}"
+API = "https://www.urbandictionary.com/browse.php?character={0}"
 
 MAX_ATTEMPTS = 10
 DELAY = 10
 
-NUMBER_SIGN = "#"
+NUMBER_SIGN = "*"
 
 
 # https://stackoverflow.com/a/554580/306149
@@ -27,30 +27,18 @@ def extract_page_entries(letter, html):
     for li in list.find_all('li'):
         a = li.find('a').string
         if a:
-            if letter == NUMBER_SIGN and not re.match('[a-z]', a, re.I):
-                yield a
-            elif letter != NUMBER_SIGN and not re.match(chr(ord(letter) + 1), a, re.I):
-                yield a
+            yield a
 
 def get_next(letter, html):
     soup = BeautifulSoup(html, "html.parser")
     next = soup.find('a', {"rel":"next"})
     if next:
         href = next['href']
-        if letter == NUMBER_SIGN:
-            if re.search('word=[a-z]', href, re.I):
-                return None
-        elif re.search(f"word={chr(ord(letter) + 1)}", href, re.I):
-            return None    
         return 'https://www.urbandictionary.com' + href
     return None
     
 def extract_letter_entries(letter):
-    if letter == NUMBER_SIGN:
-        start = ''
-    else:
-        start = letter + 'a'
-    url = API.format(start)
+    url = API.format(letter)
     attempt = 0
     while url:
         print(url)
