@@ -23,10 +23,12 @@ class NoRedirection(urllib.request.HTTPErrorProcessor):
 
 def extract_page_entries(letter, html):
     soup = BeautifulSoup(html, "html.parser")
-    list = soup.find(id="columnist").find('ul')
+    # find word list element, this might change in the future
+    list = soup.find_all("ul", class_="mt-3 columns-2 md:columns-3")[0]
     for li in list.find_all('li'):
         a = li.find('a').string
         if a:
+#           print(a)
             yield a
 
 def get_next(letter, html):
@@ -36,7 +38,7 @@ def get_next(letter, html):
         href = next['href']
         return 'https://www.urbandictionary.com' + href
     return None
-    
+
 def extract_letter_entries(letter):
     url = API.format(letter)
     attempt = 0
@@ -65,7 +67,7 @@ letters = list(string.ascii_uppercase) + ['#']
 def download_letter_entries(letter, file):
     file = file.format(letter)
     for entry_set in extract_letter_entries(letter):
-        with open(file, 'a', encoding='utf-8') as f:
+        with open(file, 'a+', encoding='utf-8') as f:
             data = ('\n'.join(entry_set))
             f.write(data + '\n')
 
