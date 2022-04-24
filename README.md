@@ -1,29 +1,29 @@
-# Urban Dictionary Word List
+# Urban Dictionary List
 
-Script and sample dataset of all urban dictionary entry names (around 1.4 million total):
+Script and sample dataset of all urban dictionary entries (around 2.7 million total):
 
 ```bash
 $ head -1000 data/a.data | tail -20
-Abanoub
-abansion
-aba nuckie
-ABAP
-a bape and a year
-Abaphany
-Abaqoos
-abar
-Abarackan
-Abarai
-Abarai Renji
-Abarat
-a barbara
-Abareh
-abarenbou
-Abarket
-abarkheid
-A Barkley
-a barlow
-a barney
+A Classy rimjob
+A Clayton
+a clean cunt
+a clean golf ball
+A Clean Pinch
+A Clean Rig
+a clean sanchez
+a clean sink
+A clean slide
+A clear bag of smashed assholes
+a cleeb
+a cleggy
+a cliff
+A clinker
+A Clint Colvin
+A clint song
+A Clint Stevens
+a clinton
+a clip around the ear
+a clip around the ear hole.
 ```
 
 
@@ -48,7 +48,6 @@ $ rm -r data/*
 # re-download all entries
 $ python main.py
 ```
-
 
 ## Usage
 For reseach purposes. I'm not affiliated with Urban Dictionary.
