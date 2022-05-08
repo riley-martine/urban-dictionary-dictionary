@@ -70,22 +70,25 @@ urllib.request.install_opener(opener)
 letters = list(string.ascii_uppercase) + ["#"]
 
 
-def download_letter_entries(letter, file):
+def download_letter_entries(letter, file, remove_dead):
     file = file.format(letter)
-    # entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
-    for page_data in extract_letter_entries(letter):
+    entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
 
+    if remove_dead:
+        all_data = entries
+    else:
         with open(file, "r", encoding="utf-8") as f:
             old_data = [line.strip() for line in f.readlines()]
-            all_data = sorted(set(old_data).union(set(page_data)), key=str.casefold)
-        with open(file, "w", encoding="utf-8") as f:
-            f.write("\n".join(all_data) + "\n")
+        all_data = sorted(set(old_data).union(set(entries)), key=str.casefold)
+
+    with open(file, "w", encoding="utf-8") as f:
+        f.write("\n".join(all_data) + "\n")
 
 
-def download_entries(letters, file):
+def download_entries(letters, file, remove_dead):
     for letter in letters:
         print(f"======={letter}=======")
-        download_letter_entries(letter, file)
+        download_letter_entries(letter, file, remove_dead)
 
 
 parser = argparse.ArgumentParser(description="Download urban dictionary words.")
@@ -108,6 +111,10 @@ parser.add_argument(
     default="data/{0}.data",
 )
 
+parser.add_argument(
+    "--remove-dead", action="store_true", help="Removes entries that no longer exist."
+)
+
 args = parser.parse_args()
 
 letters = [letter.upper() for letter in args.letters]
@@ -116,4 +123,4 @@ if not letters:
         for row in ifile:
             letters.append(row.strip())
 
-download_entries(letters, args.out)
+download_entries(letters, args.out, args.remove_dead)
