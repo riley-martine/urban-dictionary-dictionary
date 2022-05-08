@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import string
 import time
 import urllib.request
@@ -71,10 +72,14 @@ letters = list(string.ascii_uppercase) + ["#"]
 
 def download_letter_entries(letter, file):
     file = file.format(letter)
-    for entry_set in extract_letter_entries(letter):
-        with open(file, "a+", encoding="utf-8") as f:
-            data = "\n".join(entry_set)
-            f.write(data + "\n")
+    # entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
+    for page_data in extract_letter_entries(letter):
+
+        with open(file, "r", encoding="utf-8") as f:
+            old_data = [line.strip() for line in f.readlines()]
+            all_data = sorted(set(old_data).union(set(page_data)), key=str.casefold)
+        with open(file, "w", encoding="utf-8") as f:
+            f.write("\n".join(all_data) + "\n")
 
 
 def download_entries(letters, file):
