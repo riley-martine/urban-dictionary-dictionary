@@ -86,6 +86,10 @@ def download_entries(letters, file):
 parser = argparse.ArgumentParser(description="Download urban dictionary words.")
 
 parser.add_argument(
+    "letters", metavar="L", type=str, nargs="*", help="Letters to download."
+)
+
+parser.add_argument(
     "--ifile",
     dest="ifile",
     help="input file name. Contains a list of letters separated by a newline",
@@ -101,9 +105,10 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-letters = []
-with open(args.ifile, "r") as ifile:
-    for row in ifile:
-        letters.append(row.strip())
+letters = [letter.upper() for letter in args.letters]
+if not letters:
+    with open(args.ifile, "r") as ifile:
+        for row in ifile:
+            letters.append(row.strip())
 
 download_entries(letters, args.out)
