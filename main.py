@@ -1,10 +1,10 @@
-import string
-from bs4 import BeautifulSoup
-import urllib.request
-import time
-import os
 import argparse
-import re
+import itertools
+import string
+import time
+import urllib.request
+
+from bs4 import BeautifulSoup
 
 API = "https://www.urbandictionary.com/browse.php?character={0}"
 
@@ -18,25 +18,29 @@ NUMBER_SIGN = "*"
 class NoRedirection(urllib.request.HTTPErrorProcessor):
     def http_response(self, request, response):
         return response
-    
+
     https_response = http_response
 
-def extract_page_entries(letter, html):
+
+def extract_page_entries(html):
     soup = BeautifulSoup(html, "html.parser")
-    list = soup.find(id="columnist").find('ul')
-    for li in list.find_all('li'):
-        a = li.find('a').string
+    # find word list element, this might change in the future
+    ul = soup.find_all("ul", class_="mt-3 columns-2 md:columns-3")[0]
+    for li in ul.find_all("li"):
+        a = li.find("a").string
         if a:
             yield a
 
-def get_next(letter, html):
+
+def get_next(html):
     soup = BeautifulSoup(html, "html.parser")
-    next = soup.find('a', {"rel":"next"})
-    if next:
-        href = next['href']
-        return 'https://www.urbandictionary.com' + href
+    next_link = soup.find("a", {"rel": "next"})
+    if next_link:
+        href = next_link["href"]
+        return "https://www.urbandictionary.com" + href
     return None
-    
+
+
 def extract_letter_entries(letter):
     url = API.format(letter)
     attempt = 0
@@ -46,8 +50,8 @@ def extract_letter_entries(letter):
         code = response.getcode()
         if code == 200:
             content = response.read()
-            yield list(extract_page_entries(letter, content))
-            url = get_next(letter, content)
+            yield list(extract_page_entries(content))
+            url = get_next(content)
             attempt = 0
         else:
             print(f"Trying again, expected response code: 200, got {code}")
@@ -56,37 +60,67 @@ def extract_letter_entries(letter):
                 break
             time.sleep(DELAY * attempt)
 
-opener = urllib.request.build_opener(NoRedirection, urllib.request.HTTPCookieProcessor())
+
+opener = urllib.request.build_opener(
+    NoRedirection, urllib.request.HTTPCookieProcessor()
+)
 urllib.request.install_opener(opener)
 
 
-letters = list(string.ascii_uppercase) + ['#']
+letters = list(string.ascii_uppercase) + ["#"]
 
-def download_letter_entries(letter, file):
+
+def download_letter_entries(letter, file, remove_dead):
     file = file.format(letter)
-    for entry_set in extract_letter_entries(letter):
-        with open(file, 'a', encoding='utf-8') as f:
-            data = ('\n'.join(entry_set))
-            f.write(data + '\n')
+    entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
 
-def download_entries(letters, file):
+    if remove_dead:
+        all_data = entries
+    else:
+        with open(file, "r", encoding="utf-8") as f:
+            old_data = [line.strip() for line in f.readlines()]
+        all_data = sorted(set(old_data).union(set(entries)), key=str.casefold)
+
+    with open(file, "w", encoding="utf-8") as f:
+        f.write("\n".join(all_data) + "\n")
+
+
+def download_entries(letters, file, remove_dead):
     for letter in letters:
         print(f"======={letter}=======")
-        download_letter_entries(letter, file)
+        download_letter_entries(letter, file, remove_dead)
 
-parser = argparse.ArgumentParser(description='Process some integers.')
 
-parser.add_argument('--ifile', dest='ifile',
-                   help='input file name. Contains a list of letters separated by a newline', default="input.list")
+parser = argparse.ArgumentParser(description="Download urban dictionary words.")
 
-parser.add_argument('--out', dest='out',
-                   help='output file name. May be a format string', default="data/{0}.data")
+parser.add_argument(
+    "letters", metavar="L", type=str, nargs="*", help="Letters to download."
+)
+
+parser.add_argument(
+    "--ifile",
+    dest="ifile",
+    help="input file name. Contains a list of letters separated by a newline",
+    default="input.list",
+)
+
+parser.add_argument(
+    "--out",
+    dest="out",
+    help="output file name. May be a format string",
+    default="data/{0}.data",
+)
+
+parser.add_argument(
+    "--remove-dead", action="store_true", help="Removes entries that no longer exist."
+)
 
 args = parser.parse_args()
 
-letters = []
-with open(args.ifile, 'r') as ifile:
-    for row in ifile:
-        letters.append(row.strip())
+letters = [letter.upper() for letter in args.letters]
+if not letters:
+    with open(args.ifile, "r") as ifile:
+        for row in ifile:
+            letters.append(row.strip())
 
-download_entries(letters, args.out)
+download_entries(letters, args.out, args.remove_dead)
