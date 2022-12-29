@@ -3,6 +3,9 @@
 .project
 node_modules
 *.err
+ud.index
+ud.dict.dz
+.venv
 
 # OS Files #
 ############
