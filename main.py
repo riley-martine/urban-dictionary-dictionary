@@ -1,78 +1,85 @@
-import argparse
-import itertools
-import string
-import time
-import urllib.request
+#!/usr/bin/env python3
 
+import argparse
+import asyncio
+import itertools
+import random
+import string
+
+import aiohttp
 from bs4 import BeautifulSoup
+
+# This whole thing could probably be about 200x faster if we parsed the sitemap instead:
+# https://www.urbandictionary.com/sitemap-https.xml.gz
+# it contains links to other sitemaps, e.g.
+# sitemap1403-https.xml
+# <url>
+# <loc>
+# https://www.urbandictionary.com/define.php?term=Lesida
+# </loc>
+# </url>
+# if these are up to date (CHECK), then we should be able to pull all and
+# use those as input for the js downloader.
 
 API = "https://www.urbandictionary.com/browse.php?character={0}"
 
 MAX_ATTEMPTS = 10
-DELAY = 10
 
-NUMBER_SIGN = "*"
-
-
-# https://stackoverflow.com/a/554580/306149
-class NoRedirection(urllib.request.HTTPErrorProcessor):
-    def http_response(self, request, response):
-        return response
-
-    https_response = http_response
-
-
+# To only parse soup once, final yield is the next page.
 def extract_page_entries(html):
-    soup = BeautifulSoup(html, "html.parser")
+    soup = BeautifulSoup(html, "lxml")
     # find word list element, this might change in the future
     ul = soup.find_all("ul", class_="mt-3 columns-2 md:columns-3")[0]
-    for li in ul.find_all("li"):
+    lis = ul.find_all("li")
+    if not lis:
+        return
+    for li in lis:
         a = li.find("a").string
         if a:
             yield a
-
-
-def get_next(html):
-    soup = BeautifulSoup(html, "html.parser")
     next_link = soup.find("a", {"rel": "next"})
     if next_link:
         href = next_link["href"]
-        return "https://www.urbandictionary.com" + href
-    return None
+        yield "https://www.urbandictionary.com" + href
 
 
-def extract_letter_entries(letter):
+async def extract_letter_entries(session, letter):
     url = API.format(letter)
     attempt = 0
     while url:
         print(url)
-        response = urllib.request.urlopen(url)
-        code = response.getcode()
-        if code == 200:
-            content = response.read()
-            yield list(extract_page_entries(content))
-            url = get_next(content)
-            attempt = 0
-        else:
-            print(f"Trying again, expected response code: 200, got {code}")
-            attempt += 1
-            if attempt > MAX_ATTEMPTS:
-                break
-            time.sleep(DELAY * attempt)
-
-
-opener = urllib.request.build_opener(
-    NoRedirection, urllib.request.HTTPCookieProcessor()
-)
-urllib.request.install_opener(opener)
+        async with session.get(url) as response:
+            code = response.status
+            if code == 200:
+                content = await response.text()
+                page_entries_and_url = list(extract_page_entries(content))
+                if page_entries_and_url and page_entries_and_url[-1].startswith(
+                    "https://www.urbandictionary.com/browse.php?character"
+                ):
+                    yield page_entries_and_url[:-1]
+                    url = page_entries_and_url[-1]
+                else:
+                    yield page_entries_and_url
+                    url = None
+                attempt = 0
+            else:
+                print(f"Trying again, expected response code: 200, got {code}")
+                attempt += 1
+                if attempt > MAX_ATTEMPTS:
+                    break
+                await asyncio.sleep(2**attempt + (random.randint(1, 100) / 100))
 
 
 letters = list(string.ascii_uppercase) + ["#"]
 
 
-def download_letter_entries(letter, file, remove_dead):
+async def download_letter_entries(session, letter, file, remove_dead):
     file = file.format(letter)
-    entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
+    entries = []
+    async for entry in extract_letter_entries(session, letter):
+        entries.append(entry)
+
+    entries = itertools.chain.from_iterable(entries)
 
     if remove_dead:
         all_data = entries
@@ -85,10 +92,13 @@ def download_letter_entries(letter, file, remove_dead):
         f.write("\n".join(all_data) + "\n")
 
 
-def download_entries(letters, file, remove_dead):
-    for letter in letters:
-        print(f"======={letter}=======")
-        download_letter_entries(letter, file, remove_dead)
+async def download_entries(letters, file, remove_dead):
+    session = aiohttp.ClientSession()
+    async with asyncio.TaskGroup() as tg:
+        for letter in letters:
+            print(f"======={letter}=======")
+            tg.create_task(download_letter_entries(session, letter, file, remove_dead))
+    await session.close()
 
 
 parser = argparse.ArgumentParser(description="Download urban dictionary words.")
@@ -123,4 +133,4 @@ if not letters:
         for row in ifile:
             letters.append(row.strip())
 
-download_entries(letters, args.out, args.remove_dead)
+asyncio.run(download_entries(letters, args.out, args.remove_dead))
