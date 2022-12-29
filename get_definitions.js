@@ -38,7 +38,8 @@ function processResponse(word, data) {
 */
 async function getDefinition(word) {
     return new Promise((resolve, reject) => {
-        https.get(API+"?term="+word,
+        const url = API+"?term="+encodeURIComponent(word);
+        https.get(url,
             (res) => {
                 if (res.statusCode != 200) {
                     reject('Request failed for ' + word + '. status: ' + res.statusCode);
@@ -46,10 +47,53 @@ async function getDefinition(word) {
                 let rawData = '';
                 res.on('data', (chunk) => (rawData += chunk));
                 res.on('end', () => {
-                    resolve(processResponse(word, JSON.parse(rawData)));
+                    try {
+                        resolve(processResponse(word, JSON.parse(rawData)));
+                    } catch (error) {
+                        console.error(`Error with ${word}: ${url}`);
+                        console.error(error);
+                        // We resolve bc there are GOING to b errors
+                        // And we would rather check them all at the end
+                        resolve();
+                    }
                 });
-            }).on('error', reject);
+            }).on('error', () => {
+                console.error(`Error with ${word}: ${url}`);
+                console.error(error);
+                // We resolve bc there are GOING to b errors
+                // And we would rather check them all at the end
+                resolve();
+            });
     });
+}
+
+// https://stackoverflow.com/questions/54901078/async-task-manager-with-maximum-number-of-concurrent-running-tasks
+class TaskManager {
+    constructor(capacity) {
+        this.capacity = capacity;
+        this.waiting = [];
+        this.running = [];
+    }
+    push(tk) {
+        this.waiting.push(tk);
+        if (this.running.length < this.capacity) {
+            this.next();
+        }
+    }
+    next() {
+        const task = this.waiting.shift();
+        if (!task) {
+            return; // No new tasks
+        }
+        this.running.push(task);
+        const runningTask = getDefinition(task);
+        runningTask.then(() => {
+            this.running = this.running.filter(t => t !== task);
+            this.next();
+        }).catch(error => {
+            console.error(error);
+        });
+    }
 }
 
 /**
@@ -60,8 +104,9 @@ async function processData(file) {
         input: fs.createReadStream(file)
     });
 
+    const manager = new TaskManager(20);
     for await (const line of lineReader) {
-        await getDefinition(line);
+        manager.push(line);
     }
 }
 
